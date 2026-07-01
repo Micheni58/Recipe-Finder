@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const navigate = useNavigate()
 
+  // Load user on app load
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
@@ -23,24 +24,57 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = (username, password) => {
-    const storedUsers = JSON.parse(localStorage.getItem("users") || "{}")
-    if (storedUsers[username] && storedUsers[username].password === password) {
-      const userData = { username }
-      localStorage.setItem("user", JSON.stringify(userData))
-      setUser(userData)
-      return true
+    try {
+      let users = JSON.parse(localStorage.getItem("users") || "[]")
+      
+      // Ensure users is an array
+      if (!Array.isArray(users)) {
+        console.warn("Users data is not an array, resetting to empty array")
+        users = []
+      }
+
+      const matchedUser = users.find(
+        (u) => u.username === username && u.password === password
+      )
+
+      if (matchedUser) {
+        const userData = { username }
+        localStorage.setItem("user", JSON.stringify(userData))
+        setUser(userData)
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error("Login error:", error)
+      return false
     }
-    return false
   }
 
   const signup = (username, password) => {
-    const storedUsers = JSON.parse(localStorage.getItem("users") || "{}")
-    if (storedUsers[username]) {
+    try {
+      let users = JSON.parse(localStorage.getItem("users") || "[]")
+      
+      // Ensure users is an array
+      if (!Array.isArray(users)) {
+        console.warn("Users data is not an array, resetting to empty array")
+        users = []
+      }
+
+      const existingUser = users.find((u) => u.username === username)
+
+      if (existingUser) {
+        return false // User already exists
+      }
+
+      const newUser = { username, password }
+      users.push(newUser)
+      localStorage.setItem("users", JSON.stringify(users))
+      return true
+    } catch (error) {
+      console.error("Signup error:", error)
       return false
     }
-    storedUsers[username] = { password }
-    localStorage.setItem("users", JSON.stringify(storedUsers))
-    return true
   }
 
   const logout = () => {
@@ -49,12 +83,9 @@ export const AuthProvider = ({ children }) => {
     navigate("/login")
   }
 
-  const value = {
-    user,
-    login,
-    signup,
-    logout,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, signup, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }

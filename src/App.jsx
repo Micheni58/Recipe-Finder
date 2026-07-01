@@ -13,7 +13,6 @@ import AddRecipe from "./Pages/AddRecipe/AddRecipe";
 import RecipeDetail from "./Components/RecipeDetail/RecipeDetail";
 import Navbar from "./Components/Navbar/Navbar";
 import Footer from "./Components/Footer/Footer";
-import Button from "./Components/Button/Button";
 import "./App.css";
 
 function App() {
@@ -34,7 +33,6 @@ function App() {
                 <Route path="/add-recipe" element={<AddRecipe />} />
                 <Route path="/recipe/:id" element={<RecipeDetail />} />
               </Routes>
-              <Button />
               <Footer />
             </div>
           </RecipeProvider>

@@ -1,6 +1,7 @@
 import React from "react"
 import { useAuth } from "../../context/AuthContext"
-import { Link } from "react-router-dom"
+import { NavLink } from "react-router-dom"
+import { Home, BookOpen, Heart, PlusSquare, LogOut } from "lucide-react"
 import "./Sidebar.css"
 
 const Sidebar = () => {
@@ -10,16 +11,36 @@ const Sidebar = () => {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h2>TastyBoard</h2>
+      <div className="sidebar-top">
+        <div className="sidebar-logo">
+          <span>Tasty</span>Board
+        </div>
+        <p className="sidebar-welcome">Welcome back, <strong>{user.username}</strong></p>
       </div>
+
       <nav className="sidebar-nav">
-        <Link to="/dashboard" className="sidebar-link">Dashboard</Link>
-        <Link to="/browse-recipes" className="sidebar-link">Browse Recipes</Link>
-        <Link to="/favorites" className="sidebar-link">Favorites</Link>
-        <Link to="/add-recipe" className="sidebar-link">Add Recipe</Link>
-        <button onClick={logout} className="sidebar-link logout-btn">Logout</button>
+        <NavLink to="/dashboard" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <Home size={18} />
+          Dashboard
+        </NavLink>
+        <NavLink to="/browse-recipes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <BookOpen size={18} />
+          Browse Recipes
+        </NavLink>
+        <NavLink to="/favorites" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <Heart size={18} />
+          Favorites
+        </NavLink>
+        <NavLink to="/add-recipe" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <PlusSquare size={18} />
+          Add Recipe
+        </NavLink>
       </nav>
+
+      <button onClick={logout} className="logout-btn">
+        <LogOut size={18} />
+        Sign Out
+      </button>
     </aside>
   )
 }

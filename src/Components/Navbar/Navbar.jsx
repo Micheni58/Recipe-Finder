@@ -5,6 +5,7 @@ import "./Navbar.css"
 
 const Navbar = () => {
   const { user } = useAuth()
+  if (user) return null
 
   return (
     <nav className="navbar">
@@ -13,7 +14,7 @@ const Navbar = () => {
           <Link to="/" className="navbar-logo">TastyBoard</Link>
         </div>
         <div className="navbar-links">
-          <Link to="/" className="navbar-link">Home</Link>
+          {!user && <Link to="/" className="navbar-link">Home</Link>}
           {!user ? (
             <>
               <Link to="/login" className="navbar-link">Login</Link>

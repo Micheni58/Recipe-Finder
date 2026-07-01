@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToasts } from "./ToastContext";
-import { getRecipes, getCuisines, saveRecipe, getRecipeById } from "../services/api";
+import { getRecipes, getCuisines, saveRecipe, getRecipeById, getUserRecipes } from "../services/api";
 
 const RecipeContext = createContext();
 
@@ -20,6 +20,7 @@ export const RecipeProvider = ({ children }) => {
   const [cuisines, setCuisines] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCuisine, setSelectedCuisine] = useState("");
+  const [userRecipes, setUserRecipes] = useState([]);
   const { addToast } = useToasts();
 
   const loadRecipes = async () => {
@@ -29,14 +30,7 @@ export const RecipeProvider = ({ children }) => {
       // Fetch Spoonacular recipes
       const spoonacularRecipes = await getRecipes(searchQuery, selectedCuisine);
 
-      // Fetch user recipes from db.json
-      const response = await fetch("http://localhost:4000/recipes");
-      if (!response.ok) {
-        throw new Error("Failed to fetch user recipes");
-      }
-      const userRecipes = await response.json();
-
-      // Combine recipes
+      // Combine recipes with cached local user recipes
       const combinedRecipes = [...spoonacularRecipes, ...userRecipes];
       setRecipes(combinedRecipes);
 
@@ -76,7 +70,7 @@ export const RecipeProvider = ({ children }) => {
       }
       return recipe;
     } catch (err) {
-      throw new Error("Failed to load recipe details");
+      throw err;
     }
   };
 
@@ -86,26 +80,31 @@ export const RecipeProvider = ({ children }) => {
       if (!newRecipe) {
         throw new Error("Failed to add recipe");
       }
-      setRecipes((prev) => [...prev, newRecipe]);
+      // Add user_ prefix to the ID to avoid collisions
+      const recipeWithPrefixedId = {
+        ...newRecipe,
+        id: `user_${newRecipe.id}`,
+      };
+      setRecipes((prev) => [...prev, recipeWithPrefixedId]);
 
       // Update filteredRecipes if matches filters
       let shouldAddToFiltered = true;
-      if (searchQuery && !newRecipe.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (searchQuery && !recipeWithPrefixedId.title.toLowerCase().includes(searchQuery.toLowerCase())) {
         shouldAddToFiltered = false;
       }
-      if (selectedCuisine && newRecipe.cuisine.toLowerCase() !== selectedCuisine.toLowerCase()) {
+      if (selectedCuisine && recipeWithPrefixedId.cuisine.toLowerCase() !== selectedCuisine.toLowerCase()) {
         shouldAddToFiltered = false;
       }
       if (shouldAddToFiltered) {
-        setFilteredRecipes((prev) => [...prev, newRecipe]);
+        setFilteredRecipes((prev) => [...prev, recipeWithPrefixedId]);
       }
 
       // Update cuisines
-      if (!cuisines.includes(newRecipe.cuisine)) {
-        setCuisines((prev) => [...prev, newRecipe.cuisine]);
+      if (!cuisines.includes(recipeWithPrefixedId.cuisine)) {
+        setCuisines((prev) => [...prev, recipeWithPrefixedId.cuisine]);
       }
 
-      return newRecipe;
+      return recipeWithPrefixedId;
     } catch (err) {
       setError("Failed to save recipe");
       addToast("Failed to add recipe", "error");
@@ -114,8 +113,26 @@ export const RecipeProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const loadUserRecipes = async () => {
+      try {
+        const fetchedUserRecipes = await getUserRecipes();
+        setUserRecipes(
+          fetchedUserRecipes.map((recipe) => ({
+            ...recipe,
+            id: `user_${recipe.id}`,
+          }))
+        );
+      } catch {
+        setUserRecipes([]);
+      }
+    };
+
+    loadUserRecipes();
+  }, []);
+
+  useEffect(() => {
     loadRecipes();
-  }, [searchQuery, selectedCuisine]);
+  }, [searchQuery, selectedCuisine, userRecipes]);
 
   return (
     <RecipeContext.Provider

@@ -1,7 +1,11 @@
 import React from "react"
+import { useAuth } from "../../context/AuthContext"
 import "./Footer.css"
 
 const Footer = () => {
+  const { user } = useAuth()
+  if (user) return null
+
   return (
     <footer className="footer">
       <div className="container">

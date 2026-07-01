@@ -1,19 +1,45 @@
-const SPOONACULAR_API_KEY = "63738a5eb856465ab088011a9f9f71f4";
 const BASE_URL = "https://api.spoonacular.com";
 const LOCAL_API_URL = "http://localhost:4000";
 
+const getSpoonacularApiKey = () => {
+  const key = import.meta.env.VITE_SPOONACULAR_API_KEY;
+  if (!key) {
+    throw new Error(
+      "Missing Spoonacular API key. Add VITE_SPOONACULAR_API_KEY to your .env file."
+    );
+  }
+  return key;
+};
+
 const handleApiError = (error) => {
   console.error("API Error:", error);
-  if (error.message.includes("401")) {
-    throw new Error("Invalid API key. Please check your Spoonacular API key.");
+
+  const message = error?.message?.toString() || "Failed to fetch data from API";
+
+  if (message.includes("401")) {
+    throw new Error("Invalid Spoonacular API key. Please check your VITE_SPOONACULAR_API_KEY.");
   }
+
+  if (message.includes("402") || message.toLowerCase().includes("payment required")) {
+    throw new Error(
+      "Spoonacular API request blocked: payment required or plan limit exceeded. Please check your Spoonacular account or use local recipes."
+    );
+  }
+
+  if (message.toLowerCase().includes("failed to fetch")) {
+    throw new Error(
+      "Unable to reach the API. Check your internet connection and make sure the local backend is running."
+    );
+  }
+
   throw new Error("Failed to fetch data from API");
 };
 
 export const getRecipes = async (query = "", cuisine = "", number = 12) => {
   try {
+    const apiKey = getSpoonacularApiKey();
     const params = new URLSearchParams({
-      apiKey: SPOONACULAR_API_KEY,
+      apiKey,
       number: number.toString(),
       addRecipeInformation: "true",
       fillIngredients: "false",
@@ -57,26 +83,31 @@ export const getRecipes = async (query = "", cuisine = "", number = 12) => {
 
 export const getRecipeById = async (id) => {
   try {
-    // Try fetching from db.json first
-    const localResponse = await fetch(`${LOCAL_API_URL}/recipes/${id}`);
-    if (localResponse.ok) {
-      const recipe = await localResponse.json();
-      return {
-        id: recipe.id,
-        title: recipe.title || "Untitled Recipe",
-        imageUrl: recipe.imageUrl || "/placeholder.svg?height=300&width=400",
-        cuisine: recipe.cuisine || "International",
-        description: recipe.description || "A delicious recipe",
-        prepTime: recipe.prepTime || 30,
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [],
-        isUserRecipe: true,
-      };
+    // First attempt local recipe lookup. If the local backend is unavailable,
+    // fall back to Spoonacular instead of failing immediately.
+    try {
+      const localResponse = await fetch(`${LOCAL_API_URL}/recipes/${id}`);
+      if (localResponse.ok) {
+        const recipe = await localResponse.json();
+        return {
+          id: recipe.id,
+          title: recipe.title || "Untitled Recipe",
+          imageUrl: recipe.imageUrl || "/placeholder.svg?height=300&width=400",
+          cuisine: recipe.cuisine || "International",
+          description: recipe.description || "A delicious recipe",
+          prepTime: recipe.prepTime || 30,
+          ingredients: recipe.ingredients || [],
+          instructions: recipe.instructions || [],
+          isUserRecipe: true,
+        };
+      }
+    } catch (localError) {
+      console.warn("Local backend unavailable, falling back to Spoonacular:", localError);
     }
 
-    // If not found in db.json, try Spoonacular
+    const apiKey = getSpoonacularApiKey();
     const response = await fetch(
-      `${BASE_URL}/recipes/${id}/information?apiKey=${SPOONACULAR_API_KEY}&includeNutrition=false`
+      `${BASE_URL}/recipes/${id}/information?apiKey=${apiKey}&includeNutrition=false`
     );
 
     if (!response.ok) {
@@ -183,8 +214,9 @@ export const getUserRecipes = async () => {
 
 export const searchByIngredients = async (ingredients) => {
   try {
+    const apiKey = getSpoonacularApiKey();
     const response = await fetch(
-      `${BASE_URL}/recipes/findByIngredients?apiKey=${SPOONACULAR_API_KEY}&ingredients=${ingredients}&number=12`
+      `${BASE_URL}/recipes/findByIngredients?apiKey=${apiKey}&ingredients=${encodeURIComponent(ingredients)}&number=12`
     );
 
     if (!response.ok) {
